@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,11 @@
  */
 package org.springframework.cloud.skipper.server.deployer.strategies;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.springframework.cloud.skipper.domain.Release;
+import org.springframework.cloud.skipper.domain.SkipperManifestKind;
 import org.springframework.cloud.skipper.server.deployer.ReleaseAnalysisReport;
 
 /**
@@ -40,6 +44,12 @@ public class SimpleRedBlackUpgradeStrategy implements UpgradeStrategy {
 		this.handleHealthCheckStep = handleHealthCheckStep;
 		this.deployAppStep = deployAppStep;
 	}
+	
+	@Override
+	public Collection<String> getSupportedKinds() {
+		return Arrays.asList(SkipperManifestKind.SpringBootApp.name(),
+				SkipperManifestKind.SpringCloudDeployerApplication.name());
+	}
 
 	@Override
 	public void deployApps(Release existingRelease, Release replacingRelease, ReleaseAnalysisReport releaseAnalysisReport) {
@@ -53,15 +63,16 @@ public class SimpleRedBlackUpgradeStrategy implements UpgradeStrategy {
 
 	@Override
 	public void accept(Release existingRelease, Release replacingRelease,
-			ReleaseAnalysisReport releaseAnalysisReport) {
+			ReleaseAnalysisReport releaseAnalysisReport, boolean rollback) {
 		this.handleHealthCheckStep.handleHealthCheck(true, existingRelease,
-				releaseAnalysisReport.getApplicationNamesToUpgrade(), replacingRelease);
+				releaseAnalysisReport.getApplicationNamesToUpgrade(), replacingRelease, null, false, rollback);
 	}
 
 	@Override
-	public void cancel(Release existingRelease, Release replacingRelease, ReleaseAnalysisReport releaseAnalysisReport) {
+	public void cancel(Release existingRelease, Release replacingRelease, ReleaseAnalysisReport releaseAnalysisReport,
+			Long timeout, boolean cancel, boolean rollback) {
 		this.handleHealthCheckStep.handleHealthCheck(false, existingRelease,
-				releaseAnalysisReport.getApplicationNamesToUpgrade(), replacingRelease);
+				releaseAnalysisReport.getApplicationNamesToUpgrade(), replacingRelease, timeout, cancel, rollback);
 	}
 
 }

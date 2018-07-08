@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@ import org.springframework.util.StringUtils;
 public class ReleaseAnalyzer {
 
 	private final SpringCloudDeployerApplicationManifestReader applicationManifestReader;
-
 	private final Logger logger = LoggerFactory.getLogger(ReleaseAnalyzer.class);
 	private final DelegatingResourceLoader delegatingResourceLoader;
 	private ApplicationManifestDifferenceFactory applicationManifestDifferenceFactory = new ApplicationManifestDifferenceFactory();
@@ -65,16 +64,13 @@ public class ReleaseAnalyzer {
 	 * @return an analysis report describing the changes to make, if any.
 	 */
 	public ReleaseAnalysisReport analyze(Release existingRelease, Release replacingRelease) {
-
 		// For now, assume single package with no deps or package with same number of deps
 		List<? extends SpringCloudDeployerApplicationManifest> existingApplicationSpecList = this.applicationManifestReader
-				.read(existingRelease
-						.getManifest().getData());
+				.read(existingRelease.getManifest().getData());
 		List<? extends SpringCloudDeployerApplicationManifest> replacingApplicationSpecList = this.applicationManifestReader
-				.read(replacingRelease
-						.getManifest().getData());
-
-		if (existingRelease.getPkg().getDependencies().size() == replacingRelease.getPkg().getDependencies().size()) {
+				.read(replacingRelease.getManifest().getData());
+		if (existingRelease.getPkg().getDependencies().size() == replacingRelease.getPkg().getDependencies()
+				.size()) {
 			if (existingRelease.getPkg().getDependencies().size() == 0) {
 				logger.info("Existing Package and Upgrade Package both have no dependent packages.");
 				return analyzeTopLevelPackagesOnly(existingApplicationSpecList,
@@ -90,7 +86,8 @@ public class ReleaseAnalyzer {
 							existingRelease, replacingRelease);
 				}
 				else {
-					throw new SkipperException("Can not yet compare package with top level templates and dependencies");
+					throw new SkipperException(
+							"Can not yet compare package with top level templates and dependencies");
 				}
 			}
 		}

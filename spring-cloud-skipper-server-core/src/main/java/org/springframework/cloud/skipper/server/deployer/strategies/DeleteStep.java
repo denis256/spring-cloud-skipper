@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,6 @@ public class DeleteStep {
 
 	public Release delete(Release release, AppDeployerData existingAppDeployerData,
 			List<String> applicationNamesToDelete) {
-
 		AppDeployer appDeployer = this.deployerRepository.findByNameRequired(release.getPlatformName())
 				.getAppDeployer();
 
@@ -65,7 +64,7 @@ public class DeleteStep {
 				}
 				else {
 					logger.warn("For Release name {}, did not undeploy existing app {} as its status is not "
-									+ "'deployed'.", release.getName(), appNameAndDeploymentId.getKey());
+							+ "'deployed'.", release.getName(), appNameAndDeploymentId.getKey());
 				}
 			}
 		}
