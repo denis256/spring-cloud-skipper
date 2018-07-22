@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.cloud.skipper.domain;
+package org.springframework.cloud.skipper.server.controller.docs;
 
-public enum SkipperManifestKind {
-	SpringCloudDeployerApplication,
-	SpringBootApp,
-	CloudFoundryApplication
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+
+/**
+ * Repository based documentation tests suite.
+ *
+ * @author Ilayaperumal Gopinathan
+ */
+
+@RunWith(Suite.class)
+@Suite.SuiteClasses({ApiDocumentation.class, DeployersDocumentation.class,
+		PackageMetadataDocumentation.class, RepositoriesDocumentation.class, ReleasesDocumentation.class})
+public class RepositoryDocumentationTests {
+
 }

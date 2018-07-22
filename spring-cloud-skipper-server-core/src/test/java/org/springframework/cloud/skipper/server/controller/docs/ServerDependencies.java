@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.cloud.skipper.server.config;
+package org.springframework.cloud.skipper.server.controller.docs;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,9 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.data.rest.RepositoryRestMvcAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.EmbeddedDataSourceConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.ErrorAttributes;
+import org.springframework.boot.autoconfigure.web.ErrorMvcAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.common.security.AuthorizationProperties;
@@ -39,6 +45,11 @@ import org.springframework.cloud.skipper.io.DefaultPackageReader;
 import org.springframework.cloud.skipper.io.DefaultPackageWriter;
 import org.springframework.cloud.skipper.io.PackageReader;
 import org.springframework.cloud.skipper.io.PackageWriter;
+import org.springframework.cloud.skipper.server.config.LocalPlatformProperties;
+import org.springframework.cloud.skipper.server.config.MavenConfigurationProperties;
+import org.springframework.cloud.skipper.server.config.SkipperServerConfiguration;
+import org.springframework.cloud.skipper.server.config.SkipperServerPlatformConfiguration;
+import org.springframework.cloud.skipper.server.config.SkipperServerProperties;
 import org.springframework.cloud.skipper.server.controller.AboutController;
 import org.springframework.cloud.skipper.server.controller.PackageController;
 import org.springframework.cloud.skipper.server.controller.ReleaseController;
@@ -75,28 +86,21 @@ import org.springframework.cloud.skipper.server.service.ReleaseService;
 import org.springframework.cloud.skipper.server.service.ReleaseStateUpdateService;
 import org.springframework.cloud.skipper.server.service.RepositoryInitializationService;
 import org.springframework.cloud.skipper.server.statemachine.SkipperStateMachineService;
-import org.springframework.cloud.skipper.server.statemachine.StateMachineConfiguration;
-import org.springframework.cloud.skipper.server.statemachine.StateMachineExecutorConfiguration;
-import org.springframework.cloud.skipper.server.statemachine.StateMachinePersistConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.data.map.repository.config.EnableMapRepositories;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.statemachine.boot.autoconfigure.StateMachineJpaRepositoriesAutoConfiguration;
+import org.springframework.test.context.web.WebAppConfiguration;
+
+import static org.mockito.Mockito.mock;
+import static org.springframework.cloud.skipper.server.config.SkipperServerConfiguration.SKIPPER_EXECUTOR;
 
 /**
- * Main configuration class for the server.
- *
- * @author Mark Pollack
  * @author Ilayaperumal Gopinathan
- * @author Janne Valkealahti
- * @author Gunnar Hillert
- * @author Donovan Muller
  */
 @Configuration
 @EnableConfigurationProperties({ SkipperServerProperties.class, VersionInfoProperties.class,
@@ -104,15 +108,14 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 		HealthCheckProperties.class })
 @EntityScan({ "org.springframework.cloud.skipper.domain",
 		"org.springframework.cloud.skipper.server.domain" })
-@EnableMapRepositories(basePackages = "org.springframework.cloud.skipper.server.repository")
-@EnableJpaRepositories(basePackages = "org.springframework.cloud.skipper.server.repository")
-@EnableTransactionManagement
 @EnableAsync
-@Import({ StateMachinePersistConfiguration.class, StateMachineExecutorConfiguration.class,
-		StateMachineConfiguration.class, SecurityConfiguration.class })
-public class SkipperServerConfiguration implements AsyncConfigurer {
-
-	public static final String SKIPPER_EXECUTOR = "skipperThreadPoolTaskExecutor";
+@ImportAutoConfiguration(classes = { JacksonAutoConfiguration.class, EmbeddedDataSourceConfiguration.class,
+		HibernateJpaAutoConfiguration.class, RepositoryRestMvcAutoConfiguration.class,
+		ErrorMvcAutoConfiguration.class, StateMachineJpaRepositoriesAutoConfiguration.class,
+		SkipperServerPlatformConfiguration.class })
+@Import(RepositoryConfiguration.class)
+@WebAppConfiguration
+public class ServerDependencies implements AsyncConfigurer {
 
 	private final Logger logger = LoggerFactory.getLogger(SkipperServerConfiguration.class);
 
@@ -135,6 +138,11 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	@Bean
 	public SkipperLinksResourceProcessor skipperControllerResourceProcessor() {
 		return new SkipperLinksResourceProcessor();
+	}
+
+	@Bean
+	public SkipperStateMachineService skipperStateMachineService() {
+		return mock(SkipperStateMachineService.class);
 	}
 
 	@Bean
@@ -171,10 +179,8 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	}
 
 	@Bean
-	public PackageService packageService(RepositoryRepository repositoryRepository,
-			PackageMetadataRepository packageMetadataRepository,
-			PackageReader packageReader) {
-		return new PackageService(repositoryRepository, packageMetadataRepository, packageReader);
+	public PackageService packageService() {
+		return mock(PackageService.class);
 	}
 
 	@Bean
@@ -188,11 +194,8 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	}
 
 	@Bean
-	public ReleaseReportService releaseReportService(PackageMetadataRepository packageMetadataRepository,
-			ReleaseRepository releaseRepository, PackageService packageService,
-			ReleaseManagerFactory releaseManagerFactory) {
-		return new ReleaseReportService(packageMetadataRepository, releaseRepository, packageService,
-				releaseManagerFactory);
+	public ReleaseReportService releaseReportService() {
+		return mock(ReleaseReportService.class);
 	}
 
 	@Bean
@@ -206,12 +209,8 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	}
 
 	@Bean
-	public ReleaseService releaseService(PackageMetadataRepository packageMetadataRepository,
-			ReleaseRepository releaseRepository, PackageService packageService,
-			ReleaseManagerFactory releaseManagerFactory, DeployerRepository deployerRepository,
-			PackageMetadataService packageMetadataService) {
-		return new ReleaseService(packageMetadataRepository, releaseRepository, packageService, releaseManagerFactory,
-				deployerRepository, packageMetadataService);
+	public ReleaseService releaseService() {
+		return mock(ReleaseService.class);
 	}
 
 	@Bean
@@ -270,12 +269,8 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	}
 
 	@Bean
-	public DeployAppStep DeployAppStep(DeployerRepository deployerRepository,
-			AppDeploymentRequestFactory appDeploymentRequestFactory,
-			AppDeployerDataRepository appDeployerDataRepository, ReleaseRepository releaseRepository,
-			SpringCloudDeployerApplicationManifestReader applicationManifestReader) {
-		return new DeployAppStep(deployerRepository, appDeploymentRequestFactory, appDeployerDataRepository,
-				releaseRepository, applicationManifestReader);
+	public DeployAppStep DeployAppStep() {
+		return mock(DeployAppStep.class);
 	}
 
 	@Bean
@@ -334,5 +329,4 @@ public class SkipperServerConfiguration implements AsyncConfigurer {
 	public AuthorizationProperties authorizationProperties() {
 		return new AuthorizationProperties();
 	}
-
 }
